@@ -55,6 +55,7 @@ jobs:
         run: |
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo -E apt-get -qq update
+          # sudo -E apt-get -qq install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 python2.7 unzip zlib1g-dev lib32gcc1-s1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib antlr3 gperf wget curl swig rsync
           sudo -E apt-get -qq install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32readline-dev lib32z1-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libc6-dev-i386 libncurses6 libncursesw6 lib32ncurses-dev lib32ncurses6 lib32ncursesw6 libncurses5-dev x11proto-core-dev libx11-dev libgl1-mesa-dev unzip fontconfig make python2
           sudo -E apt-get -qq install libfuse-dev
           sudo -E apt-get -qq autoremove --purge
@@ -77,72 +78,18 @@ jobs:
         run: |
           git clone --depth=1 -b ${{ inputs.kernel_tag }} ${{ inputs.git_url }} kernel-source
           
-      - name: Support KernelSU and Droidspaces
+      - name: Support KernelSU
         if: github.event.inputs.ksu == 'true'
         run: |
           git clone https://github.com/ReSukiSU/ReSukiSU kernel-source/KernelSU
           cd kernel-source
-          
-          # KernelSU 基础配置
           echo "CONFIG_KPROBES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
           echo "CONFIG_HAVE_KPROBES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
           echo "CONFIG_KPROBE_EVENTS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          
-          # Droidspaces 必要配置追加 (非GKI 4.19架构)
-          echo "CONFIG_SYSCTL=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_SYSVIPC=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_POSIX_MQUEUE=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NAMESPACES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_PID_NS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_UTS_NS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IPC_NS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_SECCOMP=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_SECCOMP_FILTER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_CGROUPS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_CGROUP_DEVICE=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_CGROUP_PIDS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_MEMCG=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_CGROUP_SCHED=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_FAIR_GROUP_SCHED=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_CGROUP_FREEZER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_CGROUP_NET_PRIO=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_DEVTMPFS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_OVERLAY_FS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_TMPFS_POSIX_ACL=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_TMPFS_XATTR=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_FW_LOADER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_FW_LOADER_USER_HELPER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_FW_LOADER_COMPRESS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NET_NS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_VETH=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_BRIDGE=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NETFILTER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_BRIDGE_NETFILTER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NETFILTER_ADVANCED=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_CONNTRACK=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IP_NF_IPTABLES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IP_NF_FILTER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_NAT=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_TABLES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IP_NF_TARGET_MASQUERADE=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NETFILTER_XT_TARGET_MASQUERADE=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NETFILTER_XT_TARGET_TCPMSS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_CONNTRACK_NETLINK=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_NAT_REDIRECT=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IP_ADVANCED_ROUTER=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IP_MULTIPLE_TABLES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_CONNTRACK_IPV4=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_NF_NAT_IPV4=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          echo "CONFIG_IP_NF_NAT=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          
-          # 禁用偏执网络限制，防止容器内无网
-          echo "CONFIG_ANDROID_PARANOID_NETWORK=n" >> ${{ inputs.config_path }}${{ inputs.config_name }}
-          
           git config --global user.email "robot@example.com"
           git config --global user.name "robot"
           git add ${{ inputs.config_path }}${{ inputs.config_name }}
-          git commit -m "Add KSU and Droidspaces configs"
+          git commit -m "KUS"
           sh ./KernelSU/kernel/setup.sh
 
       - name: Make
@@ -165,10 +112,8 @@ jobs:
           rm -rf ramdisk.cpio boot.img
 
       - name: Zip
-        run: |
-          # 修复打包：将服务器重构好的 new-boot.img 命名为 ksu-boot.img 一起打包输出
-          cp new-boot.img ksu-boot.img
-          zip -r -9 -o Kernel.zip dtbo.img Image ksu-boot.img
+        run:
+          zip -r -9 -o Kernel.zip dtbo.img Image
 
       - name: Kernel REL
         uses: actions/upload-artifact@main

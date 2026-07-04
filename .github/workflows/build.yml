@@ -55,7 +55,6 @@ jobs:
         run: |
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
           sudo -E apt-get -qq update
-          # sudo -E apt-get -qq install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 python2.7 unzip zlib1g-dev lib32gcc1-s1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib antlr3 gperf wget curl swig rsync
           sudo -E apt-get -qq install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32readline-dev lib32z1-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libc6-dev-i386 libncurses6 libncursesw6 lib32ncurses-dev lib32ncurses6 lib32ncursesw6 libncurses5-dev x11proto-core-dev libx11-dev libgl1-mesa-dev unzip fontconfig make python2
           sudo -E apt-get -qq install libfuse-dev
           sudo -E apt-get -qq autoremove --purge
@@ -78,18 +77,21 @@ jobs:
         run: |
           git clone --depth=1 -b ${{ inputs.kernel_tag }} ${{ inputs.git_url }} kernel-source
           
-      - name: Support KernelSU
+      - name: Support KernelSU Only
         if: github.event.inputs.ksu == 'true'
         run: |
           git clone https://github.com/ReSukiSU/ReSukiSU kernel-source/KernelSU
           cd kernel-source
+          
+          # KernelSU 核心配置项
           echo "CONFIG_KPROBES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
           echo "CONFIG_HAVE_KPROBES=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
           echo "CONFIG_KPROBE_EVENTS=y" >> ${{ inputs.config_path }}${{ inputs.config_name }}
+          
           git config --global user.email "robot@example.com"
           git config --global user.name "robot"
           git add ${{ inputs.config_path }}${{ inputs.config_name }}
-          git commit -m "KUS"
+          git commit -m "Support KernelSU only"
           sh ./KernelSU/kernel/setup.sh
 
       - name: Make
@@ -112,7 +114,9 @@ jobs:
           rm -rf ramdisk.cpio boot.img
 
       - name: Zip
-        run:
+        run: |
+          # 提取服务器使用 magiskboot 完美重新签名的 boot.img 并命名为 ksu-boot.img
+          cp new-boot.img ksu-boot.img
           zip -r -9 -o Kernel.zip dtbo.img Image ksu-boot.img
 
       - name: Kernel REL

@@ -113,21 +113,40 @@ jobs:
           sed -i 's/\r$//' "$PATCH_DIR/01.patch" "$PATCH_DIR/02.patch"
 
           cd kernel-source
-          for p in "$PATCH_DIR"/01.patch "$PATCH_DIR"/02.patch; do
-            echo "=== applying $(basename "$p") ==="
+
+          # 目标文件是否存在的判断依据从补丁里解析，不生效就跳过：
+          # alioth 4.19 内核已移除 xt_qtaguid 模块，01 补丁对其为空操作（不是失败）。
+          # 不要在 git 仓库里执行无参 patch，否则它会交互式询问 "File to patch:" 而挂住。
+          apply_patch() {
+            p="$1"
+            tgt=$(grep -m1 '^+++ b/' "$p" | sed 's|^+++ b/||; s/\t.*$//')
+            if [ ! -e "$tgt" ]; then
+              echo "SKIP: $(basename "$p") — 目标文件不存在: $tgt（该内核无此模块，补丁不适用）"
+              return 0
+            fi
+            echo "=== applying $(basename "$p") -> $tgt ==="
             if git apply --check -v "$p" 2>/dev/null; then
               git apply -v "$p"
             elif git apply --check --3way -v "$p" 2>/dev/null; then
               git apply --3way -v "$p"
             else
-              # 兜底：patch 的 fuzz 更宽松，且可跳过已应用的 hunk
-              patch -p1 --forward --no-backup-if-mismatch < "$p" \
+              # 兜底：patch 的 fuzz 更宽松，并显式 --batch 避免任何交互式提问
+              patch -p1 --forward --batch --no-backup-if-mismatch < "$p" \
                 || echo "WARN: $(basename "$p") 可能已应用或存在 fuzz，继续编译"
             fi
-          done
+          }
+          apply_patch "$PATCH_DIR/01.patch"
+          apply_patch "$PATCH_DIR/02.patch"
 
           echo "=== kABI patch applied, diff stat ==="
           git --no-pager diff --stat
+
+          # cgroup 前缀补丁是 Droidspaces 的核心补丁，必须真正应用成功，否则直接失败
+          if ! grep -q "CGRP_ROOT_NOPREFIX" kernel/cgroup/cgroup.c; then
+            echo "ERROR: 02 补丁（cgroup file prefix handling）未生效，Droidspaces 兼容性无法保证"
+            exit 1
+          fi
+          echo "OK: cgroup 前缀处理补丁已确认生效"
 
       # ============================================================
       # 追加 Droidspaces / APatch 所需内核配置
@@ -137,6 +156,7 @@ jobs:
       - name: Append Droidspaces Config
         run: |
           set -eux
+          cd kernel-source
           CONFIG_FILE="${{ steps.init_config.outputs.config_file }}"
           test -f "$CONFIG_FILE" || { echo "找不到内核配置文件: $CONFIG_FILE"; exit 1; }
 

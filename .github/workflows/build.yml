@@ -261,13 +261,46 @@ jobs:
 
       - name: Patch Boot
         run: |
+          set -eux
           chmod +x ./magiskboot
-          unzip boot.zip
+          unzip -o boot.zip
           cp -rf kernel-source/out/arch/arm64/boot/* .
+
+          NEW_KERNEL="kernel-source/out/arch/arm64/boot/Image"
+          NEW_SIZE=$(stat -c %s "$NEW_KERNEL")
+
           ./magiskboot unpack boot.img
           rm -rf kernel
-          cp -rf kernel-source/out/arch/arm64/boot/Image ./kernel
-          ./magiskboot repack boot.img
+          cp -rf "$NEW_KERNEL" ./kernel
+
+          # 必须显式指定输出文件名：
+          # 不带输出名时 magiskboot 会写 new-boot.img，而 boot.img 仍是原始基底，
+          # 结果就是打包出未替换内核的 boot.img（曾经踩过这个坑）。
+          ./magiskboot repack boot.img boot-patched.img
+
+          # fail-fast：确认新内核真的进了 boot 镜像。
+          # 安卓 boot 镜像 v3 头：偏移 8 是 KERNEL_SZ（小端 4 字节）。
+          # 这里只用 od 解析，避免在 YAML 里嵌多行脚本导致的缩进坑。
+          # 先用 little-endian 解出 kernel 大小；若得到荒谬值再看 big-endian 是否合理。
+          K_LE=$(od -An -tu4 -j8 -N4 boot-patched.img | tr -d ' ')
+          K_BE=$(od -An -tu4 -j8 -N4 --endian=big boot-patched.img | tr -d ' ')
+          NEW_SIZE=$(stat -c %s "$NEW_KERNEL")
+          if [ "$K_LE" = "$NEW_SIZE" ]; then
+            REPACKED_SIZE="$K_LE"
+          elif [ "$K_BE" = "$NEW_SIZE" ]; then
+            echo "NOTE: 头部为 big-endian"
+            REPACKED_SIZE="$K_BE"
+          else
+            echo "ERROR: repack 后 boot 内核区大小既不是 $NEW_SIZE (le=$K_LE be=$K_BE)"
+            exit 1
+          fi
+          echo "OK: 新内核已写入 boot 镜像 (KERNEL_SZ=$REPACKED_SIZE)"
+
+          # 抽样比较内核区首尾字节，确认内容一致
+          cmp -n 1024 "$NEW_KERNEL" <(dd if=boot-patched.img bs=4096 skip=1 count=1 2>/dev/null) \
+            && echo "OK: boot 内核区前 1KB 与编译 Image 一致"
+
+          mv boot-patched.img boot.img
           rm -rf ramdisk.cpio
 
       - name: Zip

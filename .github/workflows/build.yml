@@ -1,5 +1,8 @@
 name: Build K40 Kernel
 
+# 记录实际使用的 base commit，便于打包 boot.img 时追溯
+run-name: Build K40 Kernel (base ${{ github.sha }})
+
 on:
   workflow_dispatch:
     inputs:
@@ -38,8 +41,6 @@ jobs:
   build_kernel:
 
     name: Build K40 Kernel
-    # 记录实际使用的 base commit，便于打包 boot.img 时追溯
-    run-name: Build K40 Kernel (base ${{ github.sha }})
 
     runs-on: ubuntu-22.04
 
